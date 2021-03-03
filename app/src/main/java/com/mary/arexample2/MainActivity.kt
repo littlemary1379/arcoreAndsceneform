@@ -7,14 +7,14 @@ import android.view.GestureDetector
 import android.view.MotionEvent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import com.google.ar.core.ArCoreApk
-import com.google.ar.core.Config
-import com.google.ar.core.Session
+import com.google.ar.core.*
 import com.google.ar.core.exceptions.*
+import com.google.ar.sceneform.AnchorNode
 import com.google.ar.sceneform.ArSceneView
-import com.google.ar.sceneform.Scene
+import com.google.ar.sceneform.Node
 import com.mary.arexample2.util.DlogUtil
 import com.mary.arexample2.util.PermissionCheckUtil
+
 
 class MainActivity : AppCompatActivity() {
 
@@ -38,6 +38,34 @@ class MainActivity : AppCompatActivity() {
         setListener()
     }
 
+    override fun onResume() {
+        super.onResume()
+
+        if(arSceneView == null) {
+            return
+        }
+
+        if(arSceneView.session == null) {
+            createSession()
+        }
+
+        try {
+            arSceneView.resume()
+        } catch (e: java.lang.Exception) {
+            DlogUtil.d(TAG, e)
+            e.printStackTrace()
+        }
+
+    }
+
+    override fun onPause() {
+        super.onPause()
+        if(arSceneView != null) {
+            DlogUtil.d(TAG, "pause")
+            arSceneView.pause()
+        }
+    }
+
     private fun findView() {
         arSceneView = findViewById(R.id.arSceneView)
     }
@@ -45,20 +73,42 @@ class MainActivity : AppCompatActivity() {
     private fun setListener() {
         var gestureDetector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
             override fun onSingleTapUp(e: MotionEvent?): Boolean {
+                DlogUtil.d(TAG, "singleTapUp")
                 onSingleTapUp(e)
                 return true
             }
 
             override fun onDown(e: MotionEvent?): Boolean {
+                DlogUtil.d(TAG, "down")
                 return true
             }
         })
 
-        arSceneView.scene.setOnTouchListener(Scene.OnTouchListener { hitTestResult, motionEvent ->
-            return@OnTouchListener gestureDetector.onTouchEvent(motionEvent)
-        })
+        arSceneView.scene.setOnTouchListener { hitTestResult, motionEvent ->
+            DlogUtil.d(TAG, hitTestResult.distance)
+            return@setOnTouchListener false
+        }
 
     }
+
+    private fun onSingleTap(tap: MotionEvent){
+        var frame : Frame? = arSceneView.arFrame
+
+        if (tap != null && frame?.camera?.trackingState == TrackingState.TRACKING) {
+            for (hit in frame.hitTest(tap)) {
+                val frameTrack = hit.trackable
+                if (frameTrack is Plane && frameTrack.isPoseInPolygon(hit.hitPose)) {
+                    // Create the Anchor.
+                    val anchor = hit.createAnchor()
+                    val anchorNode = AnchorNode(anchor)
+                    anchorNode.setParent(arSceneView.scene)
+//                    val solarSystem: Node = createSolarSystem()
+//                    anchorNode.addChild(solarSystem)
+                }
+            }
+        }
+    }
+
 
     //1. permission
     private fun permissionCheck() {
@@ -114,15 +164,29 @@ class MainActivity : AppCompatActivity() {
 
     private fun createSession() {
         DlogUtil.d(TAG, "세션 생성")
-        session = Session(this)
+
+        if(session == null){
+            session = Session(this)
+        }
+
+        //necessary : config.updateMode = Config.UpdateMode.LATEST_CAMERA_IMAGE
         val config = Config(session)
         config.updateMode = Config.UpdateMode.LATEST_CAMERA_IMAGE
+        config.planeFindingMode = Config.PlaneFindingMode.HORIZONTAL_AND_VERTICAL
 
         session?.configure(config)
         arSceneView.setupSession(session!!)
-        arSceneView.resume()
 
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+
+        if(arSceneView != null) {
+            DlogUtil.d(TAG, "destroy")
+            session?.close()
+            arSceneView.destroy()
+        }
+    }
 
 }
