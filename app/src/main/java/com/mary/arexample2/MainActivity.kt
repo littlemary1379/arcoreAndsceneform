@@ -12,6 +12,8 @@ import com.google.ar.core.exceptions.*
 import com.google.ar.sceneform.AnchorNode
 import com.google.ar.sceneform.ArSceneView
 import com.google.ar.sceneform.Node
+import com.google.ar.sceneform.math.Vector3
+import com.google.ar.sceneform.rendering.*
 import com.mary.arexample2.util.DlogUtil
 import com.mary.arexample2.util.PermissionCheckUtil
 
@@ -51,7 +53,7 @@ class MainActivity : AppCompatActivity() {
 
         try {
             arSceneView.resume()
-        } catch (e: java.lang.Exception) {
+        } catch (e: CameraNotAvailableException) {
             DlogUtil.d(TAG, e)
             e.printStackTrace()
         }
@@ -85,7 +87,7 @@ class MainActivity : AppCompatActivity() {
         })
 
         arSceneView.scene.setOnTouchListener { hitTestResult, motionEvent ->
-            DlogUtil.d(TAG, hitTestResult.distance)
+            onSingleTap(motionEvent)
             return@setOnTouchListener false
         }
 
@@ -102,8 +104,21 @@ class MainActivity : AppCompatActivity() {
                     val anchor = hit.createAnchor()
                     val anchorNode = AnchorNode(anchor)
                     anchorNode.setParent(arSceneView.scene)
-//                    val solarSystem: Node = createSolarSystem()
-//                    anchorNode.addChild(solarSystem)
+
+                    val color = Color(1f, 0f, 0f)
+
+                    MaterialFactory.makeOpaqueWithColor(this, color)
+                            .thenAccept { material: Material? ->
+                                // The sphere is in local coordinate space, so make the center 0,0,0
+                                val sphere: Renderable = ShapeFactory.makeSphere(0.01f, Vector3.zero(),
+                                        material)
+                                val indicatorModel = Node()
+                                indicatorModel.setParent(anchorNode)
+                                DlogUtil.d(TAG, anchorNode.worldPosition.x)
+                                DlogUtil.d(TAG, anchorNode.worldPosition.y)
+                                DlogUtil.d(TAG, anchorNode.worldPosition.z)
+                                indicatorModel.renderable = sphere
+                            }
                 }
             }
         }
