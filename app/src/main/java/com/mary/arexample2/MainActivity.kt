@@ -5,17 +5,18 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.GestureDetector
 import android.view.MotionEvent
+import android.view.View
+import android.widget.FrameLayout
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.google.ar.core.*
 import com.google.ar.core.exceptions.*
-import com.google.ar.sceneform.AnchorNode
-import com.google.ar.sceneform.ArSceneView
-import com.google.ar.sceneform.Node
+import com.google.ar.sceneform.*
 import com.google.ar.sceneform.math.Vector3
 import com.google.ar.sceneform.rendering.*
 import com.mary.arexample2.util.DlogUtil
 import com.mary.arexample2.util.PermissionCheckUtil
+import com.mary.arexample2.viewholder.ArCognizePlainViewHolder
 
 
 class MainActivity : AppCompatActivity() {
@@ -26,9 +27,12 @@ class MainActivity : AppCompatActivity() {
 
 
     private lateinit var arSceneView: ArSceneView
+    private lateinit var frameLayoutCognize : FrameLayout
 
     private var session: Session? = null
     private var installRequest: Boolean = false
+
+    private lateinit var arCognizePlainViewHolder : ArCognizePlainViewHolder
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,6 +42,9 @@ class MainActivity : AppCompatActivity() {
         findView()
         checkARcore()
         setListener()
+
+        //create 할때 바닥 인식을 해야하나?
+        initAR()
     }
 
     override fun onResume() {
@@ -70,6 +77,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun findView() {
         arSceneView = findViewById(R.id.arSceneView)
+        frameLayoutCognize = findViewById(R.id.frameLayoutCognize)
     }
 
     private fun setListener() {
@@ -90,6 +98,25 @@ class MainActivity : AppCompatActivity() {
             onSingleTap(motionEvent)
             return@setOnTouchListener false
         }
+
+        arSceneView.scene.addOnUpdateListener(Scene.OnUpdateListener { frameTime: FrameTime? ->
+            var frame = arSceneView.arFrame
+
+            if(frame?.camera?.trackingState==TrackingState.TRACKING) {
+                frameLayoutCognize.visibility= View.GONE
+
+
+            } else {
+                frameLayoutCognize.visibility= View.VISIBLE
+            }
+        })
+
+    }
+
+    private fun initAR() {
+
+        arCognizePlainViewHolder = ArCognizePlainViewHolder(this)
+        frameLayoutCognize.addView(arCognizePlainViewHolder.view)
 
     }
 
