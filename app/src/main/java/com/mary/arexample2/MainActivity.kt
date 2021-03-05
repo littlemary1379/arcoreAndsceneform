@@ -14,9 +14,14 @@ import com.google.ar.core.exceptions.*
 import com.google.ar.sceneform.*
 import com.google.ar.sceneform.math.Vector3
 import com.google.ar.sceneform.rendering.*
+import com.mary.arexample2.util.Constant
 import com.mary.arexample2.util.DlogUtil
 import com.mary.arexample2.util.PermissionCheckUtil
+import com.mary.arexample2.util.event.ESSArrow
+import com.mary.arexample2.util.event.EventCenter
 import com.mary.arexample2.viewholder.ArCognizePlainViewHolder
+import com.mary.arexample2.viewholder.ArMeasureHeightViewHolder
+import java.util.HashMap
 
 
 class MainActivity : AppCompatActivity() {
@@ -33,6 +38,7 @@ class MainActivity : AppCompatActivity() {
     private var installRequest: Boolean = false
 
     private lateinit var arCognizePlainViewHolder : ArCognizePlainViewHolder
+    private lateinit var arMeasureHeightViewHolder: ArMeasureHeightViewHolder
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,6 +46,7 @@ class MainActivity : AppCompatActivity() {
 
         permissionCheck()
         findView()
+        initESS()
         checkARcore()
         setListener()
 
@@ -80,6 +87,21 @@ class MainActivity : AppCompatActivity() {
         frameLayoutCognize = findViewById(R.id.frameLayoutCognize)
     }
 
+    private fun initESS() {
+        EventCenter.addEventObserver(ESSArrow.ENTER_HEIGHT_METER, this, object : EventCenter.EventRunnable{
+            override fun run(arrow: String?, poster: Any?, data: HashMap<String?, Any?>?) {
+                if(!data.isNullOrEmpty()) {
+                    var height = data?.get("height").toString().toInt()
+                    DlogUtil.d(TAG, "data 전송, $height")
+                    Constant.process = Constant.ARProcess.MEASURE_ROOM
+                } else {
+                    DlogUtil.d(TAG, "안되는디;")
+                }
+            }
+
+        })
+    }
+
     private fun setListener() {
         var gestureDetector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
             override fun onSingleTapUp(e: MotionEvent?): Boolean {
@@ -103,21 +125,54 @@ class MainActivity : AppCompatActivity() {
             var frame = arSceneView.arFrame
 
             if(frame?.camera?.trackingState==TrackingState.TRACKING) {
-                frameLayoutCognize.visibility= View.GONE
 
+
+
+                //바닥 감지중일때는.. 힌트를 띄우고, 바닥감지중이 아닐때는 움직일때 선.. 선을 그리게 해야할거 같은데
+                if(Constant.process == Constant.ARProcess.DETECT_PLANE) {
+                    DlogUtil.d(TAG, "바닥 감지 완료 ${Constant.process}")
+                    Constant.process = Constant.ARProcess.MEASURE_HEIGHT_HINT
+                    frameLayoutCognize.visibility= View.GONE
+                    frameLayoutCognize.removeAllViews()
+                    initMeasureHint()
+                } else {
+//                    DlogUtil.d(TAG, "바닥 감지 이미 되어 있음 ${Constant.process}")
+                    if(Constant.process == Constant.ARProcess.MEASURE_HEIGHT_HINT) {
+
+                    }
+                }
 
             } else {
                 frameLayoutCognize.visibility= View.VISIBLE
+                frameLayoutCognize.removeAllViews()
+                initAR()
             }
         })
 
     }
 
     private fun initAR() {
-
         arCognizePlainViewHolder = ArCognizePlainViewHolder(this)
         frameLayoutCognize.addView(arCognizePlainViewHolder.view)
+        Constant.process = Constant.ARProcess.DETECT_PLANE
+    }
 
+    private fun initMeasureHint() {
+        arMeasureHeightViewHolder = ArMeasureHeightViewHolder(this)
+        arMeasureHeightViewHolder.arMeasureHeightViewHolderDelegate = object : ArMeasureHeightViewHolder.ArMeasureHeightViewHolderDelegate{
+            override fun confirm() {
+                DlogUtil.d(TAG, "ㅇㅁㅇ ㅠㅜ")
+                closeMeasure()
+            }
+
+        }
+        frameLayoutCognize.addView(arMeasureHeightViewHolder.view)
+        frameLayoutCognize.visibility = View.VISIBLE
+    }
+
+    private fun closeMeasure() {
+        frameLayoutCognize.removeAllViews()
+        frameLayoutCognize.visibility = View.GONE
     }
 
     private fun onSingleTap(tap: MotionEvent){
