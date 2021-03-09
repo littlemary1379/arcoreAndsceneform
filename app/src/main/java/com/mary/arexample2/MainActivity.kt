@@ -14,6 +14,7 @@ import com.google.ar.core.exceptions.*
 import com.google.ar.sceneform.*
 import com.google.ar.sceneform.math.Vector3
 import com.google.ar.sceneform.rendering.*
+import com.mary.arexample2.util.ARWorking
 import com.mary.arexample2.util.Constant
 import com.mary.arexample2.util.DlogUtil
 import com.mary.arexample2.util.PermissionCheckUtil
@@ -32,12 +33,14 @@ class MainActivity : AppCompatActivity() {
 
 
     private lateinit var arSceneView: ArSceneView
-    private lateinit var frameLayoutCognize : FrameLayout
+    private lateinit var frameLayoutCognize: FrameLayout
 
     private var session: Session? = null
     private var installRequest: Boolean = false
 
-    private lateinit var arCognizePlainViewHolder : ArCognizePlainViewHolder
+    private var arWorking : ARWorking = ARWorking()
+
+    private lateinit var arCognizePlainViewHolder: ArCognizePlainViewHolder
     private lateinit var arMeasureHeightViewHolder: ArMeasureHeightViewHolder
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -57,11 +60,11 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
 
-        if(arSceneView == null) {
+        if (arSceneView == null) {
             return
         }
 
-        if(arSceneView.session == null) {
+        if (arSceneView.session == null) {
             createSession()
         }
 
@@ -76,7 +79,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
-        if(arSceneView != null) {
+        if (arSceneView != null) {
             DlogUtil.d(TAG, "pause")
             arSceneView.pause()
         }
@@ -88,9 +91,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initESS() {
-        EventCenter.addEventObserver(ESSArrow.ENTER_HEIGHT_METER, this, object : EventCenter.EventRunnable{
+        EventCenter.addEventObserver(ESSArrow.ENTER_HEIGHT_METER, this, object : EventCenter.EventRunnable {
             override fun run(arrow: String?, poster: Any?, data: HashMap<String?, Any?>?) {
-                if(!data.isNullOrEmpty()) {
+                if (!data.isNullOrEmpty()) {
                     var height = data?.get("height").toString().toInt()
                     DlogUtil.d(TAG, "data 전송, $height")
                     Constant.process = Constant.ARProcess.MEASURE_ROOM
@@ -124,26 +127,28 @@ class MainActivity : AppCompatActivity() {
         arSceneView.scene.addOnUpdateListener(Scene.OnUpdateListener { frameTime: FrameTime? ->
             var frame = arSceneView.arFrame
 
-            if(frame?.camera?.trackingState==TrackingState.TRACKING) {
-
+            if (frame?.camera?.trackingState == TrackingState.TRACKING) {
 
 
                 //바닥 감지중일때는.. 힌트를 띄우고, 바닥감지중이 아닐때는 움직일때 선.. 선을 그리게 해야할거 같은데
-                if(Constant.process == Constant.ARProcess.DETECT_PLANE) {
+                if (Constant.process == Constant.ARProcess.DETECT_PLANE) {
                     DlogUtil.d(TAG, "바닥 감지 완료 ${Constant.process}")
                     Constant.process = Constant.ARProcess.MEASURE_HEIGHT_HINT
-                    frameLayoutCognize.visibility= View.GONE
+                    frameLayoutCognize.visibility = View.GONE
                     frameLayoutCognize.removeAllViews()
                     initMeasureHint()
+                } else if (Constant.process == Constant.ARProcess.MEASURE_HEIGHT_HINT) {
+
+                } else if (Constant.process == Constant.ARProcess.MEASURE_ROOM) {
+                    session?.let { arWorking.arRunning(arSceneView, this, it) }
+
                 } else {
 //                    DlogUtil.d(TAG, "바닥 감지 이미 되어 있음 ${Constant.process}")
-                    if(Constant.process == Constant.ARProcess.MEASURE_HEIGHT_HINT) {
 
-                    }
                 }
 
             } else {
-                frameLayoutCognize.visibility= View.VISIBLE
+                frameLayoutCognize.visibility = View.VISIBLE
                 frameLayoutCognize.removeAllViews()
                 initAR()
             }
@@ -159,7 +164,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun initMeasureHint() {
         arMeasureHeightViewHolder = ArMeasureHeightViewHolder(this)
-        arMeasureHeightViewHolder.arMeasureHeightViewHolderDelegate = object : ArMeasureHeightViewHolder.ArMeasureHeightViewHolderDelegate{
+        arMeasureHeightViewHolder.arMeasureHeightViewHolderDelegate = object : ArMeasureHeightViewHolder.ArMeasureHeightViewHolderDelegate {
             override fun confirm() {
                 DlogUtil.d(TAG, "ㅇㅁㅇ ㅠㅜ")
                 closeMeasure()
@@ -175,8 +180,8 @@ class MainActivity : AppCompatActivity() {
         frameLayoutCognize.visibility = View.GONE
     }
 
-    private fun onSingleTap(tap: MotionEvent){
-        var frame : Frame? = arSceneView.arFrame
+    private fun onSingleTap(tap: MotionEvent) {
+        var frame: Frame? = arSceneView.arFrame
 
         if (tap != null && frame?.camera?.trackingState == TrackingState.TRACKING) {
             for (hit in frame.hitTest(tap)) {
@@ -262,7 +267,7 @@ class MainActivity : AppCompatActivity() {
     private fun createSession() {
         DlogUtil.d(TAG, "세션 생성")
 
-        if(session == null){
+        if (session == null) {
             session = Session(this)
         }
 
@@ -279,7 +284,7 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
 
-        if(arSceneView != null) {
+        if (arSceneView != null) {
             DlogUtil.d(TAG, "destroy")
             session?.close()
             arSceneView.destroy()

@@ -32,6 +32,7 @@
                 android:layout_width="50dp"
                 android:layout_height="wrap_content"
                 android:imeOptions="actionNext"
+                android:textColor="@color/color_707070"
                 android:singleLine="true"/>
 
             <TextView
